@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Vertification Containers Deploy
+
+Resources:
+  CodeDeployRole:
+    Type: AWS::IAM::Role
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        -
+        Effect: "Allow"
+        Principal:
+        Service:
+          - "codepipeline.amazonaws.com"
+  ECSRole:
+    Type: AWS::IAM::Role
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        -
+        Effect: "Allow"
+        Principal:
+        Service:
+          - "ecs.amazonaws.com"
+  ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+  CodeDeploy:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: CodeDeploy
+      ComputePlatform: ECS
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore: !Ref ArtifactStoreBucket
+      Name: Vertification Containers Deploy

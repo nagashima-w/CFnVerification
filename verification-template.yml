@@ -4,24 +4,61 @@ Description: Vertification Containers Deploy
 Resources:
   CodeDeployRole:
     Type: AWS::IAM::Role
-    AssumeRolePolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        -
-        Effect: "Allow"
-        Principal:
-        Service:
-          - "codepipeline.amazonaws.com"
-  ECSRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            PolicyName: VerificationPipelinePolicy
+        Policies:
+        - PolicyDocument:
+            Statement:
+            - Action:
+              - ecs:CreateTaskSet
+              - ecs:UpdateServicePrimaryTaskSet
+              - ecs:DeleteTaskSet
+              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:ModifyListener
+              - elasticloadbalancing:DescribeRules
+              - elasticloadbalancing:ModifyRule
+              - lambda:InvokeFunction
+              - cloudwatch:DescribeAlarms
+              - sns:Publish
+              - s3:GetObject
+              - s3:GetObjectMetadata
+              - s3:GetObjectVersion
+              Effect: Allow
+              Resource: '*'
+  ECSTaskExecutionRole:
     Type: AWS::IAM::Role
-    AssumeRolePolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        -
-        Effect: "Allow"
-        Principal:
-        Service:
-          - "ecs.amazonaws.com"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ecs.amazonaws.com
+        Policies:
+        - PolicyDocument:
+            Statement:
+            - Action:
+              - ecr:GetAuthorizationToken
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - iam:PassRole
+              Effect: Allow
+              Resource: '*'
+            Version: "2012-10-17"
   ArtifactStoreBucket:
     Type: AWS::S3::Bucket
   CodeDeploy:

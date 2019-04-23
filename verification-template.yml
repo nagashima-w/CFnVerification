@@ -55,6 +55,52 @@ Resources:
               Effect: Allow
               Resource: '*'
             Version: "2012-10-17"
+  FargateALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: FargateALBTargetGroup
+    LoadBalancerArn:
+      Ref: FargateALB
+    Port: 80
+    Protocol: HTTP
+  FargateALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Name: FargateALB
+      Scheme: internet-facing
+      SecurityGroups:
+        Ref: FargateALBSecurityGroup
+      SubnetMappings:
+      Subnets:
+        Ref: PublicSubnetAz1
+        Ref: PublicSubnetAz2
+      Type: application
+  FargateALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: FargateTargetGroup
+      Port: 80
+      Protocol: HTTP
+      VpcId:
+        Ref: FargateVPC
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
+  FargateCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: VerificationCluster
+  FargateService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: VerificationCluster
+      DisiredCount: 2
+      LaunchType: FARGATE
+      LoadBalanders: !Ref FargateALB
   ArtifactStoreBucket:
     Type: AWS::S3::Bucket
   CodeDeploy:

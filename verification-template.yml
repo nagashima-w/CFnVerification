@@ -58,11 +58,7 @@ Resources:
   FargateVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref FargateCidrBlock
-  FargateCidrBlock:
-    Type: AWS::EC2::VPCCidrBlock
-    CidrBlock: 10.111.0.0/16
-    VpcId: !Ref FargateVPC
+     CidrBlock: 10.111.0.0/16
   FargateGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -122,10 +118,9 @@ Resources:
         - Type: forward
           TargetGroupArn:
             Ref: FargateALBTargetGroup
-    LoadBalancerArn:
-      Ref: FargateALB
-    Port: 80
-    Protocol: HTTP
+      LoadBalancerArn: !Ref FargateALB
+      Port: 80
+      Protocol: HTTP
   FargateALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -135,6 +130,9 @@ Resources:
       SecurityGroups:
         Ref: FargateALBSecurityGroup
       SubnetMappings:
+        SubnetId:
+          - FargateSubnetAZ1
+          - FargateSubnetAZ2
       Subnets:
         Ref: FargateSubnetAZ1
         Ref: FargateSubnetAZ2

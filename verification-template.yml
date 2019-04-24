@@ -55,6 +55,66 @@ Resources:
               Effect: Allow
               Resource: '*'
             Version: "2012-10-17"
+  FargateVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref FargateCidrBlock
+  FargateCidrBlock:
+    Type: AWS::EC2::VPCCidrBlock
+    CidrBlock: 10.111.0.0/16
+    VpcId: !Ref FargateVPC
+  FargateGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: FargateGateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref FargateGateway
+      VpcId: !Ref FargateVPC
+  FargateRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref FargateVPC
+      Tags:
+      - Key: Name
+        Value: FargateRouteTable
+  FargateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref FargateGateway
+      RouteTableId: !Ref FargateRouteTable
+  FargateSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      CidrBlock: 10.111.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: FargateSubnetAZ1
+      VpcId: !Ref FargateVPC
+  FargateSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-northeast-1c
+      CidrBlock: 10.111.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: FargateSubnetAZ2
+      VpcId: !Ref FargateVPC
+  FargateALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: FargateALBSecurityGroup
+      GroupDescription: For ALB SG
+      VpcId: !Ref FargateVPC
   FargateALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -76,8 +136,8 @@ Resources:
         Ref: FargateALBSecurityGroup
       SubnetMappings:
       Subnets:
-        Ref: PublicSubnetAz1
-        Ref: PublicSubnetAz2
+        Ref: FargateSubnetAZ1
+        Ref: FargateSubnetAZ2
       Type: application
   FargateALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup

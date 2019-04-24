@@ -1,116 +1,15 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Verification Containers Deploy
 
-Parameters:
-  ECSImageRepository:
-    Type: String
-    Default: "xxxxxxxxxxxx.dkr.ecr.ap-northeast-1.amazonaws.com/nagashi_ma_wImage:latest"
-
-
 Resources:
   DeployPipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - codepipeline.amazonaws.com
-            PolicyName: VerificationPipelinePolicy
-        Policies:
-        - PolicyDocument:
-            Statement:
-            - Action:
-              - codebuild:*
-              - codedeploy:*
-              - s3:*
-              - cloudformation:*
-              - iam:PassRole
-              - sns:Publish
-              - ecr:*
-              - ecs:*
-              - elasticloadbalancing:*
-              - cloudwatch:*
-              Effect: Allow
-              Resource: '*'
   ECSTaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - ecs.amazonaws.com
-        Policies:
-        - PolicyDocument:
-            Statement:
-            - Action:
-              - ecr:GetAuthorizationToken
-              - ecr:BatchCheckLayerAvailability
-              - ecr:GetDownloadUrlForLayer
-              - ecr:BatchGetImage
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-              - iam:PassRole
-              Effect: Allow
-              Resource: '*'
-            Version: "2012-10-17"
   FargateVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-     CidrBlock: 10.111.0.0/16
-  FargateGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-      - Key: Name
-        Value: FargateGateway
   AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref FargateGateway
-      VpcId: !Ref FargateVPC
   FargateRouteTable:
-    Type: AWS::EC2::RouteTable
-    DependsOn: AttachGateway
-    Properties:
-      VpcId: !Ref FargateVPC
-      Tags:
-      - Key: Name
-        Value: FargateRouteTable
   FargateRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref FargateGateway
-      RouteTableId: !Ref FargateRouteTable
   FargateSubnetAZ1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: ap-northeast-1a
-      CidrBlock: 10.111.1.0/24
-      MapPublicIpOnLaunch: true
-      Tags:
-      - Key: Name
-        Value: FargateSubnetAZ1
-      VpcId: !Ref FargateVPC
   FargateSubnetAZ2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: ap-northeast-1c
-      CidrBlock: 10.111.2.0/24
-      MapPublicIpOnLaunch: true
-      Tags:
-      - Key: Name
-        Value: FargateSubnetAZ2
-      VpcId: !Ref FargateVPC
   FargateALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -152,22 +51,22 @@ Resources:
   FargateALBTargetGroup1:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: FargateTargetGroup
+      Name: VerificationTargetGroup
       Port: 80
       Protocol: HTTP
       VpcId:
-        Ref: FargateVPC
+        Fn::Sub: ${ProductId}-VPC
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: 60
   FargateALBTargetGroup2:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: FargateTargetGroup
+      Name: VerificationTargetGroup
       Port: 8080
       Protocol: HTTP
       VpcId:
-        Ref: FargateVPC
+        Fn::Sub: ${ProductId}-VPC
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: 60
@@ -200,19 +99,27 @@ Resources:
         ContainerPort: 80
         LoadBalancerName: !Ref FargateALB
         TargetGroupArn:
-          Ref: FargateALBTargetGroup1
-          Ref: FargateALBTargetGroup2
+          Ref: VerificationTargetGroup1
+          Ref: VerificationTargetGroup2
       DisiredCount: 2
       LaunchType: FARGATE
       DeploymentController:
           type: CODE_DEPLOY
-  ArtifactStoreBucket:
-    Type: AWS::S3::Bucket
-  CodeDeploy:
+  FargateCodeDeploy:
     Type: AWS::CodeDeploy::Application
     Properties:
       ApplicationName: CodeDeploy
       ComputePlatform: ECS
+  CodeDeploy:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref FargateCodeDeploy
+      DeploymentConfigName: AllAtOnce
+      DeploymentGroupName: CodeDeployGroup
+      DeploymentStyle:
+        DeploymentType: BLUE_GREEN
+      ServiceRoleArn: !Ref DeployPipelineRole
+
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:

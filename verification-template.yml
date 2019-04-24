@@ -110,6 +110,15 @@ Resources:
     Properties:
       GroupName: FargateALBSecurityGroup
       GroupDescription: For ALB SG
+      SecurityGroupEgress:
+        CidrIp: 0.0.0.0/0
+#        CidrIpv6: String
+#        Description: String
+        DestinationPrefixListId: !Ref FargateGateway
+        DestinationSecurityGroupId: String
+        FromPort: Integer
+        IpProtocol: String
+        ToPort: Integer
       VpcId: !Ref FargateVPC
   FargateALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
